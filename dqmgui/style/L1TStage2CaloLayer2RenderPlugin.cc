@@ -8,18 +8,25 @@
 #include "TH1F.h"
 #include "TH2F.h"
 #include "TStyle.h"
+#include "TBox.h"
+#include "TFrame.h"
 
 class L1TStage2CaloLayer2RenderPlugin : public DQMRenderPlugin {
 
   int palette_kry[256];
   int palette_yrk[256];
-
+  TBox *exclusionBox_;
   TText tlabels_;
 
 public:
 
   virtual void initialise(int, char **)
-    {
+    { 
+      // For masking areas
+      exclusionBox_ = new TBox();
+      exclusionBox_->SetFillColor(kGray+2);
+      exclusionBox_->SetFillStyle(3002);
+      
       // Laugh all you want, but they do look pretty
       // http://arxiv.org/pdf/1509.03700v1.pdf
       // linear_kry_5-98_c75_n256 reversed
@@ -35,7 +42,7 @@ public:
     }
 
   virtual bool applies(const VisDQMObject& o, const VisDQMImgInfo&) {
-    if (o.name.find("L1T/L1TStage2CaloLayer2/") != std::string::npos || o.name.find("L1TEMU/L1TStage2CaloLayer2EMU/") != std::string::npos)
+    if (o.name.find("L1T/L1TStage2CaloLayer2/") != std::string::npos || o.name.find("L1TEMU/L1TStage2CaloLayer2/") != std::string::npos)
       return true;
 
     return false;
@@ -58,7 +65,11 @@ public:
   }
 
  private:
-
+void drawExclusionBox(double x1, double y1, double x2, double y2)
+  {
+    exclusionBox_->DrawBox(x1, y1, x2, y2);
+  }
+ 
 bool checkAndRemove(std::string &s, const char * key)
   {
     if( s.find(key) != std::string::npos )
@@ -93,6 +104,13 @@ bool checkAndRemove(std::string &s, const char * key)
     }
     if (o.name.find("Energy-Sums/HTTRank") != std::string::npos) {
       gPad->SetLogy(1);
+    }
+
+    // calo layer2 comparison histograms
+    if (o.name.find("expert") == std::string::npos) {
+      if (o.name.find(" Summary") != std::string::npos || o.name.find(" summary") != std::string::npos) {
+        obj->SetOption("texthist");
+      }
     }
 
   }
@@ -142,6 +160,11 @@ bool checkAndRemove(std::string &s, const char * key)
   void postDrawTH2F(TCanvas*, const VisDQMObject& o) {
     TH2F* obj = dynamic_cast<TH2F*>(o.object);
     assert(obj);
+    
+    if( o.name.find( "ForJetsEtEtaPhi_shift" ) != std::string::npos )
+     {
+       drawExclusionBox(-68, -0.5, 68, 143.5);
+     }
 
     gStyle->SetOptStat(10);
   }
